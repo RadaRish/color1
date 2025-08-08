@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Панорамный тур</title>
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&subset=cyrillic&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="tour-container">
+        <!-- Заголовок тура -->
+        <div id="tour-header">
+            <h1>Панорамный тур</h1>
+            <div id="scene-selector">
+                <select id="scene-select">
+                    <option value="scene-0-Кухня-JPG">Кухня.JPG</option>
+                    <option value="scene-1-Вход-JPG">Вход.JPG</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- A-Frame сцена -->
+        <a-scene 
+            id="tour-scene"
+            embedded
+            style="height: calc(100vh - 80px); width: 100%;"
+            background="color: #000000"
+            vr-mode-ui="enabled: false"
+            cursor="rayOrigin: mouse">
+            
+            <!-- Активы -->
+            <a-assets>
+                <img id="scene-0-Кухня-JPG-panorama" src="panoramas/scene-0-Кухня-JPG.jpg">
+                <img id="scene-1-Вход-JPG-panorama" src="panoramas/scene-1-Вход-JPG.jpg">
+            </a-assets>
+
+            <!-- Небесная сфера для панорамы -->
+            <a-sky id="panorama-sky" src="#scene-0-Кухня-JPG-panorama" rotation="0 -90 0"></a-sky>
+
+            <!-- Камера с орбитальным управлением -->
+            <a-camera 
+                id="tour-camera"
+                look-controls="pointerLockEnabled: false"
+                wasd-controls="enabled: false"
+                position="0 1.6 0"
+                fov="75"
+                raycaster="objects: [data-raycastable]; far: 100; interval: 100">
+            </a-camera>
+
+            <!-- Контейнер для хотспотов -->
+            <a-entity id="hotspots-container"></a-entity>
+        </a-scene>
+
+        <!-- Элементы управления -->
+        <div id="tour-controls">
+            <button id="fullscreen-btn">⛶</button>
+            <button id="zoom-in-btn">+</button>
+            <button id="zoom-out-btn">−</button>
+            <button id="reset-view-btn">⌂</button>
+        </div>
+    </div>
+
+    <!-- Данные тура -->
+    <script src="tour-data.js"></script>
+    
+    <!-- Основная логика -->
+    <script>
+        // Регистрируем кастомные компоненты A-Frame
+        
+        // Компонент billboard для поворота к камере
+        AFRAME.registerComponent('billboard', {
+            tick: function () {
+                const camera = document.querySelector('[camera]');
+                if (camera) {
+                    this.el.object3D.lookAt(camera.object3D.position);
+                }
+            }
+        });
+
+        // Компонент face-camera для правильной ориентации видео-областей
+        AFRAME.registerComponent('face-camera', {
+            init: function () {
+                this.cameraEl = null;
+                this.tick = this.tick.bind(this);
+                this.findCamera();
+            },
+
+            findCamera: function () {
+                this.cameraEl = document.querySelector('[camera]') ||
+                              document.querySelector('a-camera') ||
+                              document.querySelector('#defaultCamera');
+
+                if (!this.cameraEl) {
+                    const scene = document.querySelector('a-scene');
+                    if (scene && scene.camera && scene.camera.el) {
+                        this.cameraEl = scene.camera.el;
+                    }
+                }
+            },
+
+            tick: function () {
+                if (!this.cameraEl) {
+                    this.findCamera();
+                    return;
+                }
+
+                const cameraWorldPosition = new THREE.Vector3();
+                const elementWorldPosition = new THREE.Vector3();
+
+                this.cameraEl.object3D.getWorldPosition(cameraWorldPosition);
+                this.el.object3D.getWorldPosition(elementWorldPosition);
+
+                const direction = new THREE.Vector3();
+                direction.subVectors(cameraWorldPosition, elementWorldPosition);
+                direction.y = 0;
+                direction.normalize();
+
+                if (direction.length() > 0) {
+                    const angle = Math.atan2(direction.x, direction.z) + Math.PI;
+                    this.el.object3D.rotation.set(0, angle, 0);
+                }
+            }
+        });
+
+        // Компонент для кириллического текста
+        AFRAME.registerComponent('cyrillic-text', {
+            schema: {
+                value: { type: 'string', default: '' },
+                color: { type: 'color', default: '#ffffff' },
+                align: { type: 'string', default: 'center' },
+                size: { type: 'number', default: 1.0 }
+            },
+            init: function() {
+                this.createTextTexture();
+            },
+            update: function() {
+                this.createTextTexture();
+            },
+            createTextTexture: function() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const text = this.data.value;
+                const size = this.data.size;
+                
+                canvas.width = 512;
+                canvas.height = 128;
+                
+                ctx.fillStyle = 'rgba(0,0,0,0)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                const fontSize = Math.round(32 * size);
+                ctx.font = fontSize + 'px Roboto, Arial, sans-serif';
+                ctx.fillStyle = this.data.color;
+                ctx.textAlign = this.data.align;
+                ctx.textBaseline = 'middle';
+                
+                const x = this.data.align === 'center' ? canvas.width / 2 : 
+                         this.data.align === 'right' ? canvas.width - 10 : 10;
+                ctx.fillText(text, x, canvas.height / 2);
+                
+                const texture = new THREE.CanvasTexture(canvas);
+                texture.needsUpdate = true;
+                
+                const material = new THREE.MeshBasicMaterial({ 
+                    map: texture, 
+                    transparent: true,
+                    alphaTest: 0.1
+                });
+                
+                const geometry = new THREE.PlaneGeometry(2 * size, 0.5 * size);
+                const mesh = new THREE.Mesh(geometry, material);
+                
+                this.el.setObject3D('mesh', mesh);
+            }
+        });
+
+        // Компонент обработки хотспотов
+        AFRAME.registerComponent('hotspot-handler', {
+            schema: {
+                hotspotId: { type: 'string' },
+                type: { type: 'string', default: 'info' },
+                linkTo: { type: 'string' },
+                title: { type: 'string' },
+                description: { type: 'string' }
+            },
+            init: function() {
+                this.el.addEventListener('click', this.onClick.bind(this));
+                this.el.addEventListener('mouseenter', this.onMouseEnter.bind(this));
+                this.el.addEventListener('mouseleave', this.onMouseLeave.bind(this));
+                
+                // Добавляем data-raycastable для корректной работы raycaster
+                this.el.setAttribute('data-raycastable', '');
+            },
+            onClick: function() {
+                console.log('Клик по хотспоту:', this.data.hotspotId, 'тип:', this.data.type, 'переход:', this.data.linkTo);
+                
+                if (this.data.linkTo && this.data.linkTo !== '' && this.data.linkTo !== 'undefined' && this.data.linkTo !== 'null') {
+                    // Переход к другой сцене (для любого типа с linkTo)
+                    console.log('🔄 Переходим к сцене:', this.data.linkTo);
+                    window.tourViewer.switchToScene(this.data.linkTo);
+                } else if (this.data.type === 'info-point' || this.data.type === 'infopoint') {
+                    // Показ информации
+                    this.showInfoModal();
+                } else if (this.data.type === 'video-area') {
+                    // Воспроизведение видео
+                    this.showVideoModal();
+                } else {
+                    // Показ информации по умолчанию
+                    this.showInfoModal();
+                }
+            },
+            showInfoModal: function() {
+                // Функция для удаления расширений файлов
+                const removeFileExtension = (filename) => {
+                    if (!filename || typeof filename !== 'string') {
+                        return filename;
+                    }
+                    const videoExtensions = ['.mp4', '.avi', '.mov', '.webm', '.mkv', '.flv', '.wmv', '.m4v', '.3gp', '.ogv'];
+                    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.svg', '.webp', '.tiff', '.ico'];
+                    const allExtensions = [...videoExtensions, ...imageExtensions];
+                    const lowerFilename = filename.toLowerCase();
+                    for (const ext of allExtensions) {
+                        if (lowerFilename.endsWith(ext)) {
+                            return filename.slice(0, -ext.length);
+                        }
+                    }
+                    return filename;
+                };
+
+                // Создаем модальное окно для информации
+                const modal = document.createElement('div');
+                modal.style.cssText = 
+                    'position: fixed;' +
+                    'top: 0;' +
+                    'left: 0;' +
+                    'width: 100%;' +
+                    'height: 100%;' +
+                    'background: rgba(0, 0, 0, 0.8);' +
+                    'z-index: 10000;' +
+                    'display: flex;' +
+                    'align-items: center;' +
+                    'justify-content: center;';
+                
+                const content = document.createElement('div');
+                content.style.cssText = 
+                    'background: #2a2a2a;' +
+                    'padding: 30px;' +
+                    'border-radius: 10px;' +
+                    'max-width: 500px;' +
+                    'color: white;' +
+                    'font-family: Roboto, Arial, sans-serif;';
+                
+                content.innerHTML = 
+                    '<h3 style="margin: 0 0 15px 0; color: #ffcc00;">' + (this.data.title ? removeFileExtension(this.data.title) : 'Информация') + '</h3>' +
+                    '<p style="margin: 0 0 20px 0; line-height: 1.5;">' + (this.data.description || 'Описание отсутствует') + '</p>' +
+                    '<button style="background: #ffcc00; color: black; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold;">Закрыть</button>';
+                
+                modal.appendChild(content);
+                document.body.appendChild(modal);
+                
+                // Закрытие модального окна
+                const closeBtn = content.querySelector('button');
+                const closeModal = () => {
+                    document.body.removeChild(modal);
+                };
+                
+                closeBtn.addEventListener('click', closeModal);
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) closeModal();
+                });
+            },
+            showVideoModal: function() {
+                // Функция для удаления расширений файлов
+                const removeFileExtension = (filename) => {
+                    if (!filename || typeof filename !== 'string') {
+                        return filename;
+                    }
+                    const videoExtensions = ['.mp4', '.avi', '.mov', '.webm', '.mkv', '.flv', '.wmv', '.m4v', '.3gp', '.ogv'];
+                    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.svg', '.webp', '.tiff', '.ico'];
+                    const allExtensions = [...videoExtensions, ...imageExtensions];
+                    const lowerFilename = filename.toLowerCase();
+                    for (const ext of allExtensions) {
+                        if (lowerFilename.endsWith(ext)) {
+                            return filename.slice(0, -ext.length);
+                        }
+                    }
+                    return filename;
+                };
+
+                // Заглушка для видео - можно будет расширить позже
+                alert('Видео-функциональность: ' + (this.data.title ? removeFileExtension(this.data.title) : 'Видео-область'));
+            },
+            onMouseEnter: function() {
+                const textEl = this.el.querySelector('[cyrillic-text]');
+                if (textEl) {
+                    textEl.setAttribute('visible', true);
+                }
+                this.el.setAttribute('scale', '1.2 1.2 1.2');
+            },
+            onMouseLeave: function() {
+                const textEl = this.el.querySelector('[cyrillic-text]');
+                if (textEl) {
+                    textEl.setAttribute('visible', false);
+                }
+                this.el.setAttribute('scale', '1 1 1');
+            }
+        });
+        
+
+        // Инициализация тура
+        window.addEventListener('DOMContentLoaded', () => {
+            new TourViewer(TOUR_DATA);
+        });
+    </script>
+</body>
+</html>

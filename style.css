@@ -1,0 +1,132 @@
+/* Стили для просмотрщика панорамного тура */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Roboto', Arial, sans-serif;
+    background: #000;
+    color: #fff;
+    overflow: hidden;
+}
+
+#tour-container {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+#tour-header {
+    height: 80px;
+    background: rgba(26, 26, 26, 0.95);
+    border-bottom: 1px solid #333;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    z-index: 1000;
+}
+
+#tour-header h1 {
+    font-size: 1.5em;
+    font-weight: 300;
+    color: #fff;
+}
+
+#scene-selector select {
+    background: #333;
+    color: #fff;
+    border: 1px solid #555;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 14px;
+    min-width: 200px;
+}
+
+#scene-selector select:focus {
+    outline: none;
+    border-color: #646cff;
+}
+
+#tour-controls {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    display: flex;
+    gap: 10px;
+    z-index: 1000;
+}
+
+#tour-controls button {
+    width: 50px;
+    height: 50px;
+    background: rgba(26, 26, 26, 0.9);
+    border: 1px solid #555;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+#tour-controls button:hover {
+    background: rgba(100, 108, 255, 0.8);
+    border-color: #646cff;
+}
+
+#tour-controls button:active {
+    transform: scale(0.95);
+}
+
+/* Стили для A-Frame сцены */
+a-scene {
+    border: none !important;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    #tour-header {
+        height: 60px;
+        padding: 0 10px;
+    }
+    
+    #tour-header h1 {
+        font-size: 1.2em;
+    }
+    
+    #scene-selector select {
+        min-width: 150px;
+        font-size: 12px;
+    }
+    
+    #tour-controls {
+        bottom: 10px;
+        right: 10px;
+        gap: 5px;
+    }
+    
+    #tour-controls button {
+        width: 40px;
+        height: 40px;
+        font-size: 16px;
+    }
+}
+
+/* Стили для полноэкранного режима */
+#tour-container:-webkit-full-screen {
+    width: 100vw;
+    height: 100vh;
+}
+
+#tour-container:-moz-full-screen {
+    width: 100vw;
+    height: 100vh;
+}
+
+#tour-container:fullscreen {
+    width: 100vw;
+    height: 100vh;
+}
