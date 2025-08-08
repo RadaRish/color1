@@ -15,40 +15,69 @@ body {
 #tour-container {
     width: 100vw;
     height: 100vh;
-    display: flex;
-    flex-direction: column;
+    display: block;
 }
 
-#tour-header {
-    height: 80px;
-    background: rgba(26, 26, 26, 0.95);
-    border-bottom: 1px solid #333;
+/* Левая панель со сценами */
+#scene-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 280px;
+    height: 100vh;
+    background: rgba(26, 26, 26, 0.85);
+    border-right: 1px solid #333;
+    backdrop-filter: blur(4px);
+    color: #fff;
+    transform: translateX(0);
+    transition: transform 0.2s ease-in-out;
+    z-index: 1001;
+}
+
+#scene-panel:not(.open) {
+    transform: translateX(-250px);
+}
+
+.scene-panel-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 20px;
-    z-index: 1000;
+    padding: 12px 10px 8px 14px;
+    border-bottom: 1px solid #333;
 }
 
-#tour-header h1 {
-    font-size: 1.5em;
-    font-weight: 300;
-    color: #fff;
+.scene-panel-header .title {
+    font-size: 16px;
+    font-weight: 400;
 }
 
-#scene-selector select {
-    background: #333;
-    color: #fff;
+#scene-panel-toggle {
+    background: transparent;
     border: 1px solid #555;
-    padding: 8px 12px;
-    border-radius: 4px;
-    font-size: 14px;
-    min-width: 200px;
+    color: #fff;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    cursor: pointer;
 }
 
-#scene-selector select:focus {
-    outline: none;
+#scene-list {
+    padding: 10px;
+    overflow-y: auto;
+    height: calc(100vh - 50px);
+}
+
+#scene-list .scene-item {
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    margin-bottom: 6px;
+}
+
+#scene-list .scene-item.active, #scene-list .scene-item:hover {
     border-color: #646cff;
+    background: rgba(100, 108, 255, 0.15);
 }
 
 #tour-controls {
@@ -81,6 +110,19 @@ body {
     transform: scale(0.95);
 }
 
+/* Подсказка (2D) */
+.tour-tooltip {
+    position: fixed;
+    padding: 6px 10px;
+    background: rgba(26, 26, 26, 0.95);
+    border: 1px solid #333;
+    color: #fff;
+    border-radius: 6px;
+    font-size: 12px;
+    pointer-events: none;
+    z-index: 1002;
+}
+
 /* Стили для A-Frame сцены */
 a-scene {
     border: none !important;
@@ -88,20 +130,9 @@ a-scene {
 
 /* Адаптивность */
 @media (max-width: 768px) {
-    #tour-header {
-        height: 60px;
-        padding: 0 10px;
+    #scene-panel {
+        width: 75vw;
     }
-    
-    #tour-header h1 {
-        font-size: 1.2em;
-    }
-    
-    #scene-selector select {
-        min-width: 150px;
-        font-size: 12px;
-    }
-    
     #tour-controls {
         bottom: 10px;
         right: 10px;
